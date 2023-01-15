@@ -14,7 +14,7 @@ const createSubmission: (req: CreateSubmissionRequest) => Promise<Submission> = 
     return new Promise((resolve, reject) => {
         axios({
             method: 'POST',
-            url: host + "application",
+            url: host + "application/",
             data: req
         })
             .then((resp: AxiosResponse<Submission>) => resolve(resp.data))
@@ -27,7 +27,7 @@ const getAllSubmissions: () => Promise<Submission[]> = () => {
     return new Promise((resolve, reject) => {
         axios({
             method: 'GET',
-            url: host + "application"
+            url: host + "application/"
         })
             .then((resp: AxiosResponse<Submission[]>) => resolve(resp.data))
             .catch((err: AxiosError<string>) => reject(err.response?.data))
