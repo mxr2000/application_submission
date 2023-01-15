@@ -1,26 +1,26 @@
-import React from 'react';
-import logo from './logo.svg';
+import React, {useEffect, useState} from 'react';
 import './App.css';
+import {Container} from "@mui/material";
+import SubmissionDateView from "./components/SubmissionDateView";
+import {getAllSubmissions} from "./models/request";
+import {Submission} from "./models/model";
+import {SubmissionsContext} from './contexts/SubmissionsContext'
 
 function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+    const [submissions, setSubmissions] = useState<Submission[]>([])
+    useEffect(() => {
+        getAllSubmissions().then(submissions => {
+            setSubmissions(submissions)
+        })
+    }, [])
+    return (
+        <SubmissionsContext.Provider value={{submissions: submissions, setSubmissions: setSubmissions}}>
+            <Container sx={{maxWidth: 1200, minWidth: 1000}}>
+                <SubmissionDateView submissions={submissions}/>
+            </Container>
+        </SubmissionsContext.Provider>
+
+    );
 }
 
 export default App;
