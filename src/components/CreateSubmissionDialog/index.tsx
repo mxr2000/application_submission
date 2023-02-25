@@ -18,7 +18,12 @@ import {LocalizationProvider} from "@mui/x-date-pickers";
 import dayjs, {Dayjs} from "dayjs";
 import {createSubmission} from "../../models/request";
 import {SubmissionsContext} from "../../contexts/SubmissionsContext";
+import {AlertSnackbarContext} from "../../contexts/AlertSnackbarContext";
 
+
+const formatName: (s: string) => string = s => {
+    return s.split(" ").map(p => p[0].toUpperCase() + p.slice(1)).join(" ")
+}
 
 const CreateSubmissionDialog = (props: {
     open: boolean,
@@ -35,25 +40,31 @@ const CreateSubmissionDialog = (props: {
     const [companyName, setCompanyName] = useState('')
     const [positionName, setPositionName] = useState('')
     const [seasonId, setSeasonId] = useState('1')
-    const [date, setDate] = useState<Dayjs | null>(dayjs('2023-04-13 19:18'));
+    const [date, setDate] = useState<Dayjs | null>(dayjs());
 
     const {submissions, setSubmissions} = useContext(SubmissionsContext)
 
+    const {showSuccess, showError} = useContext(AlertSnackbarContext)
+
+    const companyNames = Array.from(new Set(submissions.map(s => s.position.company.name))).sort()
+
     const submit = () => {
         if (companyName === "" || positionName === "" || !date) {
+            showError("input bad format")
             return
         }
         createSubmission({
-            companyName: companyName,
-            positionName: positionName,
+            companyName: formatName(companyName),
+            positionName: formatName(positionName),
             seasonId: parseInt(seasonId),
             submissionDate: date.format('YYYY-MM-DD')
         })
             .then(r => {
                 setSubmissions([...submissions, r])
+                showSuccess("Successfully create submission")
                 close()
             })
-            .catch(err => console.log(err))
+            .catch(err => showError(err))
     }
 
     return (
@@ -74,9 +85,9 @@ const CreateSubmissionDialog = (props: {
                                     setCompanyName(e?.target.value)
                                 }}
                             >
-                                <MenuItem value={"Tiktok"}>Tiktok</MenuItem>
-                                <MenuItem value={"ByteDance"}>ByteDance</MenuItem>
-                                <MenuItem value={"Yahoo"}>Yahoo</MenuItem>
+                                {
+                                    companyNames.map((c, i) => <MenuItem value={c} key={i}>{c}</MenuItem>)
+                                }
                             </Select>
                         </FormControl>
                     </Grid>

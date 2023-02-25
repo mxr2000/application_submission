@@ -1,10 +1,10 @@
 import {
     Box, Checkbox,
-    FormControl, FormControlLabel, FormGroup, FormLabel,
-    Grid, TextField, Fab, Accordion, AccordionSummary, AccordionDetails, Typography, Switch, Toolbar, Paper
+    FormControl, FormControlLabel, FormGroup, Autocomplete,
+    Grid, TextField, Fab, Accordion, AccordionSummary, AccordionDetails, Typography, Switch, Toolbar, Paper, Button
 
 } from "@mui/material";
-import SubmissionTable from "../SubmissionTable";
+import SubmissionTable from "../../components/SubmissionTable";
 import React, {useState} from "react";
 import {Submission, SubmissionStatus, UpdateType} from "../../models/model";
 import {LocalizationProvider} from "@mui/x-date-pickers";
@@ -12,9 +12,10 @@ import {DatePicker} from '@mui/x-date-pickers/DatePicker';
 import {AdapterDayjs} from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, {Dayjs} from "dayjs";
 import AddIcon from '@mui/icons-material/Add';
-import CreateSubmissionDialog from "../CreateSubmissionDialog";
+import CreateSubmissionDialog from "../../components/CreateSubmissionDialog";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import CreateUpdateDialog from "../CreateUpdateDialog";
+import CreateUpdateDialog from "../../components/CreateUpdateDialog";
+import {log} from "util";
 
 
 const capitalizeFirstLetter: (s: string) => string = s => {
@@ -22,7 +23,9 @@ const capitalizeFirstLetter: (s: string) => string = s => {
 }
 
 const seasons = new Map([
-    ["1", "2023 Summer Intern"]
+    ["1", "2023 Summer Intern"],
+    ["2", "2023 Summer Intern(China)"],
+    ["3", "2023 Summer Intern(Singapore)"]
 ])
 
 
@@ -37,17 +40,19 @@ const SubmissionDateView = (props: {
     })
 
     const [seasonSet, setSeasonSet] = useState<{ [key: number]: boolean }>({
-        1: true
+        1: true,
+        2: true,
+        3: true
     })
 
     const [updateSet, setUpdateSet] = useState<{ [key in UpdateType]: boolean }>({
-        'oa': true,
-        'bq': true,
-        'vo1': true,
-        'vo2': true,
-        'vo3': true,
-        'other': true,
-        'vr': true
+        'oa': false,
+        'bq': false,
+        'vo1': false,
+        'vo2': false,
+        'vo3': false,
+        'other': false,
+        'vr': false
     })
 
     const handleStatusOptionChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,17 +76,35 @@ const SubmissionDateView = (props: {
         });
     };
 
-    const [showNoUpdateSubmission, setShowNoUpdateSubmission] = useState(true)
+    const resetUpdateFilter = () => {
+        setUpdateSet({
+            'oa': false,
+            'bq': false,
+            'vo1': false,
+            'vo2': false,
+            'vo3': false,
+            'other': false,
+            'vr': false
+        })
+        setShowNoUpdateSubmission(false)
+    }
+
+    const [showNoUpdateSubmission, setShowNoUpdateSubmission] = useState(false)
+    const [selectedCompanies, setSelectedCompanies] = useState<string[]>([])
 
     const [fromDate, setFromDate] = React.useState<Dayjs>(dayjs('2018-04-13 19:18'));
     const [toDate, setToDate] = React.useState<Dayjs>(dayjs());
+
+    const allCompanies = new Set(submissions.map(s => s.position.company.name))
 
     const [useDateFilter, setUseDateFilter] = useState(false)
     const [useUpdateFilter, setUseUpdateFilter] = useState(false)
     const [useStatusFilter, setUseStatusFilter] = useState(false)
     const [useSeasonFilter, setUseSeasonFilter] = useState(false)
+    const [useCompanyFilter, setUseCompanyFilter] = useState(false)
 
     const filteredSubmissions = submissions
+        .filter(s => !useCompanyFilter || selectedCompanies.some(c => s.position.company.name === c))
         .filter(s => !useStatusFilter || statusSet[s.status])
         .filter(s => !useSeasonFilter || seasonSet[s.position.season.id])
         .filter(s => !useUpdateFilter || (showNoUpdateSubmission && s.updates.length === 0) || s.updates.some(u => updateSet[u.type]))
@@ -94,17 +117,42 @@ const SubmissionDateView = (props: {
 
             <Grid item={true} md={3} xs={12}>
                 <Box sx={{width: "100%"}}>
-                    {/*<Toolbar>
-                        <Typography
-                            sx={{ flex: '1 1 100%' }}
-                            variant="h6"
-                            id="tableTitle"
-                            component="div"
-                        >
-                            Filters
-                        </Typography>
-                    </Toolbar>*/}
                     <Accordion>
+                        <AccordionSummary
+                            expandIcon={<ExpandMoreIcon/>}
+                            aria-controls="panel1a-content"
+                            id="panel1a-header"
+                        >
+                            <Typography>
+                                Company</Typography>
+                        </AccordionSummary>
+                        <AccordionDetails>
+                            <Autocomplete
+                                multiple
+                                options={[...Array.from(allCompanies).sort()]}
+                                getOptionLabel={name => name}
+
+                                onChange={(e, newVal) => {
+                                    setSelectedCompanies(newVal)
+                                    console.log(newVal)
+                                }}
+                                value={selectedCompanies}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        variant="standard"
+                                        label="Select or search"
+                                    />
+                                )}
+                            />
+                            <Box sx={{display: 'flex', justifyContent: 'flex-end'}}>
+                                <FormControlLabel control={<Switch value={useCompanyFilter}
+                                                                   onChange={e => setUseCompanyFilter(e.target.checked)}/>}
+                                                  label="Apply"/>
+                            </Box>
+                        </AccordionDetails>
+                    </Accordion>
+                    <Accordion >
                         <AccordionSummary
                             expandIcon={<ExpandMoreIcon/>}
                             aria-controls="panel1a-content"
@@ -159,8 +207,13 @@ const SubmissionDateView = (props: {
                                     label={"None"}/>
                             </FormGroup>
                             <Box sx={{display: 'flex', justifyContent: 'flex-end'}}>
+                                <Button sx={{mr: 2}} color={"primary"} onClick={resetUpdateFilter}>Reset</Button>
+
                                 <FormControlLabel control={<Switch value={useUpdateFilter}
-                                                                   onChange={e => setUseUpdateFilter(e.target.checked)}/>}
+                                                                   onChange={e => {
+                                                                       setUseUpdateFilter(e.target.checked)
+                                                                       setShowNoUpdateSubmission(e.target.checked)
+                                                                   }}/>}
                                                   label="Apply"/>
                             </Box>
                         </AccordionDetails>
